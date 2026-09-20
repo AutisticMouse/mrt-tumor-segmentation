@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сегментация опухолей на МРТ (МТУСИ)</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 30px;
+            color: #333;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 6px 15px rgba(0,0,0,0.08);
+            text-align: center;
+        }
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        p.subtitle {
+            color: #7f8c8d;
+            margin-bottom: 30px;
+        }
+        .upload-section {
+            margin: 20px 0;
+            border: 2px dashed #cbd5e1;
+            padding: 25px;
+            border-radius: 8px;
+            background-color: #fafbfc;
+            transition: border-color 0.3s;
+        }
+        .upload-section:hover {
+            border-color: #3498db;
+        }
+        input[type="file"] {
+            display: none;
+        }
+        .file-upload-btn {
+            background-color: #e2e8f0;
+            color: #1e293b;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            display: inline-block;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        .file-upload-btn:hover {
+            background-color: #cbd5e0;
+        }
+        #file-name {
+            margin-top: 12px;
+            font-style: italic;
+            color: #64748b;
+            font-size: 14px;
+        }
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 12px 30px;
+            font-size: 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: bold;
+            margin-top: 15px;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        .btn:disabled {
+            background-color: #95a5a6;
+            cursor: not-allowed;
+        }
+        .result-section {
+            margin-top: 35px;
+            display: none;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 25px;
+        }
+        .result-img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 8px;
+            border: 1px solid #cbd5e1;
+            margin-top: 15px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.05);
+        }
+        .area-text {
+            font-size: 18px;
+            font-weight: bold;
+            color: #e74c3c;
+            margin-top: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Система сегментации опухолей головного мозга на МРТ</h1>
+        
+        <div class="upload-section">
+            <label class="file-upload-btn">
+                📂 Выберите снимок МРТ
+                <input type="file" id="image-input" accept="image/*">
+            </label>
+            <div id="file-name">Файл не выбран</div>
+        </div>
+        
+        <button class="btn" id="submit-btn" onclick="uploadImage()" disabled>Запустить анализ</button>
+
+        <div class="result-section" id="result-section">
+            <h3>Результат обработки ИИ:</h3>
+            <div class="area-text" id="result-area"></div>
+            <img id="result-image" class="result-img" src="" alt="Результат сегментации">
+        </div>
+    </div>
+
+    <script>
+        const imageInput = document.getElementById('image-input');
+        const fileNameDiv = document.getElementById('file-name');
+        const submitBtn = document.getElementById('submit-btn');
+        const resultSection = document.getElementById('result-section');
+        const resultArea = document.getElementById('result-area');
+        const resultImage = document.getElementById('result-image');
+
+        imageInput.addEventListener('change', function() {
+            if (imageInput.files.length > 0) {
+                fileNameDiv.textContent = "Выбран файл: " + imageInput.files[0].name;
+                submitBtn.disabled = false;
+            } else {
+                fileNameDiv.textContent = "Файл не выбран";
+                submitBtn.disabled = true;
+            }
+        });
+
+        function uploadImage() {
+            const file = imageInput.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('image', file);
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = "Работает нейросеть...";
+
+            fetch('/process', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Запустить анализ";
+
+                if (data.status === 'success') {
+                    resultSection.style.display = 'block';
+                    resultArea.textContent = "Площадь опухоли: " + data.area;
+                    // Добавляем таймстамп, чтобы браузер не кэшировал старое изображение
+                    resultImage.src = data.image_url + "?" + new Date().getTime();
+                } else {
+                    alert('Ошибка: ' + (data.error || 'Неизвестная ошибка'));
+                }
+            })
+            .catch(error => {
+                submitBtn.disabled = false;
+                submitBtn.textContent = "Запустить анализ";
+                console.error('Ошибка:', error);
+                alert('Произошла ошибка при отправке запроса на сервер.');
+            });
+        }
+    </script>
+</body>
+</html>
